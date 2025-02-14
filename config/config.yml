@@ -1,0 +1,12 @@
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: changeme
+  dbname: merch_system
+  sslmode: disable
+  schema: MerchStore
+
+server:
+  host: 0.0.0.0
+  port: 8080
