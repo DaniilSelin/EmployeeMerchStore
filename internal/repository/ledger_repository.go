@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+    "EmployeeMerchStore/internal/models"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -15,7 +16,7 @@ func NewLedgerRepository(db *pgxpool.Pool) *LedgerRepository {
 	return &LedgerRepository{db: db}
 }
 
-func (lr *LedgerRepository) SendMoney(ctx context.Context, fromUser, toUser string, amount float64) error {
+func (lr *LedgerRepository) SendMoney(ctx context.Context, fromUser, toUser string, amount int) error {
 	tx, err := lr.db.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("transaction start failed: %w", err)
@@ -68,7 +69,7 @@ func (lr *LedgerRepository) SendMoney(ctx context.Context, fromUser, toUser stri
 }
 
 
-func (lr *LedgerRepository) GetUserTransactions(ctx context.Context, userID string, limit, offset int) ([]LedgerEntry, error) {
+func (lr *LedgerRepository) GetUserTransactions(ctx context.Context, userID string, limit, offset int) (*[]models.Ledger, error) {
 	query := `
 		SELECT id, user_id, movement_type, amount, reference_id, created_at
 		FROM "MerchStore".ledger
@@ -83,9 +84,9 @@ func (lr *LedgerRepository) GetUserTransactions(ctx context.Context, userID stri
 	}
 	defer rows.Close()
 
-	var transactions []LedgerEntry
+	var transactions []models.Ledger
 	for rows.Next() {
-		var entry LedgerEntry
+		var entry models.Ledger
 		err := rows.Scan(&entry.ID, &entry.UserID, &entry.MovementType, &entry.Amount, &entry.ReferenceID, &entry.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan transaction: %w", err)
@@ -97,7 +98,7 @@ func (lr *LedgerRepository) GetUserTransactions(ctx context.Context, userID stri
 		return nil, fmt.Errorf("rows iteration error: %w", err)
 	}
 
-	return transactions, nil
+	return &transactions, nil
 }
 
 /*

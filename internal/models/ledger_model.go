@@ -1,6 +1,6 @@
-package model
+package models
 
-improt ()
+import "time"
 
 type Ledger struct {
 	ID          int       `json:"id"`

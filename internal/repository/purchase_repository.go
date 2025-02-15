@@ -3,7 +3,8 @@ package repository
 import (
     "context"
     "fmt"
-    "time"
+
+    "EmployeeMerchStore/internal/models"
     "github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -45,4 +46,36 @@ func (pr *PurchasesRepository) GetMerchId(ctx context.Context, name string) (int
         return 0, fmt.Errorf("GetMerchId: %w", err)
     }
     return merchID, nil
+}
+
+func (pr *PurchasesRepository) GetUserMerch(ctx context.Context, userID string) ([]*models.UserMerch, error) {
+    query := `
+        SELECT p.merch_id, m.name, m.price, p.quantity, p.purchased_at
+        FROM "MerchStore".purchases p
+        JOIN "MerchStore".merch m ON p.merch_id = m.id
+        WHERE p.user_id = $1
+        ORDER BY p.purchased_at DESC;
+    `
+
+    rows, err := pr.db.Query(ctx, query, userID)
+    if err != nil {
+        return nil, fmt.Errorf("GetUserMerch: %w", err)
+    }
+    defer rows.Close()
+
+    var merchList []*models.UserMerch
+    for rows.Next() {
+        var um models.UserMerch
+        err := rows.Scan(&um.MerchID, &um.Name, &um.Price, &um.Quantity, &um.PurchasedAt)
+        if err != nil {
+            return nil, fmt.Errorf("GetUserMerch scan: %w", err)
+        }
+        merchList = append(merchList, &um)
+    }
+
+    if rows.Err() != nil {
+        return nil, fmt.Errorf("GetUserMerch rows error: %w", rows.Err())
+    }
+
+    return merchList, nil
 }

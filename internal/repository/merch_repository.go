@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
 
+    "EmployeeMerchStore/internal/models"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -16,23 +16,25 @@ func NewMerchRepository(db *pgxpool.Pool) *MerchRepository {
 	return &MerchRepository{db: db}
 }
 
-func (mr *MerchRepository) GetMerch(ctx context.Context, id int) (Merch, error) {
+func (mr *MerchRepository) GetMerch(ctx context.Context, id int) (models.Merch, error) {
 	query := `SELECT id, name, price, description, created_at FROM "MerchStore".merch WHERE id = $1`
-	var merch Merch
+	var merch models.Merch
 	if err := mr.db.QueryRow(ctx, query, id).Scan(&merch.ID, &merch.Name, &merch.Price, &merch.Description, &merch.CreatedAt); err != nil {
-		return Merch{}, fmt.Errorf("GetMerch: %w", err)
+		return models.Merch{}, fmt.Errorf("GetMerch: %w", err)
 	}
 	return merch, nil
 }
 
-func (mr *MerchRepository) CreateMerch(ctx context.Context, id, name string, price int, description string) (int, error) {
+func (mr *MerchRepository) CreateMerch(ctx context.Context, name string, price int, description string) (int, error) {
 	query := `INSERT INTO "MerchStore".merch (name, price, description) VALUES ($1, $2, $3) RETURNING id`
-	var id int
-	err := mr.db.QueryRow(ctx, query, name, price, description).Scan(&id)
-	if err != nil {
-		return 0, fmt.Errorf("CreateMerch: %w", err)
-	}
-	return id, nil
+
+    var merchID int 
+    err := mr.db.QueryRow(ctx, query, name, price, description).Scan(&merchID)
+    if err != nil {
+        return 0, fmt.Errorf("CreateMerch: %w", err)
+    }
+
+    return merchID, nil
 }
 
 func (mr *MerchRepository) UpdateMerch(ctx context.Context, id, name string, price int, description string) error {

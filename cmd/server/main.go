@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-// 1. Загружаем конфиг
+	// 1. Загружаем конфиг
 	cfg, err := config.LoadConfig("config/config.yml")
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)

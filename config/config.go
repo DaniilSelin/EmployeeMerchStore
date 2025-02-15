@@ -20,11 +20,18 @@ type DatabaseConfig struct {
 type ServerConfig struct {
 	Host string `yaml:"host"`
 	Port int    `yaml:"port"`
+	SecretKey string `yaml:"secret_key"`
+}
+
+type JwtConfig struct {
+	SecretKey string `yaml:"secret_key"`
+	Expiration int `yaml:"expiration"`
 }
 
 type Config struct {
 	Database DatabaseConfig `yaml:"database"`
 	Server   ServerConfig   `yaml:"server"`
+	Jwt JwtConfig `yaml:"jwt"`
 }
 
 func LoadConfig(filename string) (*Config, error) {

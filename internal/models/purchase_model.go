@@ -1,6 +1,6 @@
 package models
 
-improt ()
+import "time"
 
 type Purchase struct {
 	UserID    string    `json:"user_id"`  

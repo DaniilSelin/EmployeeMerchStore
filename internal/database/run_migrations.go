@@ -15,8 +15,8 @@ func RunMigrations(ctx context.Context, conn *pgxpool.Pool) error {
 		"internal/database/migrations/create_user.sql",
 		"internal/database/migrations/create_merch.sql",
 		"internal/database/migrations/create_ledger.sql",
-		"internal/database/migrations/creaete_idx_lastLedger.sql"
-		"internal/database/migrations/create_purchases.sql"
+		"internal/database/migrations/create_idx_lastLedger.sql",
+		"internal/database/migrations/create_purchases.sql",
 	}
 	for _, file := range files {
 		// Читаем содержимое файла

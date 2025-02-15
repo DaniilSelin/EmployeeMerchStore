@@ -1,0 +1,1 @@
+CREATE IF NOT EXIST INDEX idx_ledger_user_created_at  ON "MerchStore".ledger (user_id, created_at DESC);
