@@ -20,12 +20,12 @@ func (m *MockUserRepo) GetUserCredentials(ctx context.Context, username string) 
     return args.String(0), args.String(1), args.Error(2)
 }
 
-func (m *MockUserRepo) GetBalance(ctx context.Context, id string) (int, error) {
-    _ = m.Called(ctx, id)
-    return 1000, nil
+func (m *MockUserRepo) GetBalance(ctx context.Context, userID string) (int, error) {
+    args := m.Called(ctx, userID)
+    return args.Get(0).(int), args.Error(1)
 }
 
-func (m *MockUserRepo) CreateUser(ctx context.Context, id, username, hashPswd string, balance float64) error {
+func (m *MockUserRepo) CreateUser(ctx context.Context, id, username, hashPswd string, balance int) error {
     args := m.Called(ctx, id, username, hashPswd, balance)
     return args.Error(0)
 }

@@ -10,11 +10,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// Handler объединяет ссылки на сервисы, необходимые для обработки запросов.
 type Handler struct {
 	UserService      *service.UserService
 	PurchasesService *service.PurchasesService
 	LedgerService    *service.LedgerService
+}
+
+func NewHandler(userService *service.UserService, purchasesService *service.PurchasesService, ledgerService *service.LedgerService) *Handler {
+	return &Handler{
+		UserService:      userService,
+		PurchasesService: purchasesService,
+		LedgerService:    ledgerService,
+	}
 }
 
 type Req struct {
@@ -54,7 +61,7 @@ func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // Auth обрабатывает POST /api/auth.
-// Если пользователь существует – проверяет пароль
+// Если пользователь существует – проверяет пароль, иначе создает новго пользоавтеля
 // Возвращает JWT-токен.
 func (h *Handler) Auth(w http.ResponseWriter, r *http.Request) {
 	var req Req
@@ -68,20 +75,25 @@ func (h *Handler) Auth(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Пробуем аутентифицировать пользователя
-	token, err := h.UserService.Auth(r.Context(), req.Username, req.Password)
-	if err != nil {
-		// Если ошибка содержит информацию о том, что пользователь не найден, создаем его автоматически.
-		if strings.Contains(err.Error(), "no rows") {
-			token, err = h.UserService.CreateUser(r.Context(), req.Username, req.Password)
-			if err != nil {
-				http.Error(w, "failed to create user", http.StatusInternalServerError)
-				return
-			}
-		} else {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-	}
+	    token, err := h.UserService.Auth(r.Context(), req.Username, req.Password)
+    if err != nil {
+        // Проверяем, что ошибка именно о несуществующем пользователе
+        if strings.Contains(err.Error(), "user not found") {
+            // Создаем пользователя
+            token, err = h.UserService.CreateUser(r.Context(), req.Username, req.Password)
+            if err != nil {
+                if strings.Contains(err.Error(), "user already exists") {
+                    http.Error(w, "username already taken", http.StatusConflict)
+                } else {
+                    http.Error(w, "failed to create user", http.StatusInternalServerError)
+                }
+                return
+            }
+        } else {
+            http.Error(w, "unauthorized", http.StatusUnauthorized)
+            return
+        }
+    }
 
 	resp := struct {
 		Token string `json:"token"`

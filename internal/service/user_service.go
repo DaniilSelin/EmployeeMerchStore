@@ -7,6 +7,7 @@ import (
 
 	"EmployeeMerchStore/internal/repository"
 	"EmployeeMerchStore/internal/models"
+    "EmployeeMerchStore/internal/cache"
 	"EmployeeMerchStore/config"
 
 	"github.com/google/uuid"
@@ -17,12 +18,19 @@ import (
 type UserService struct {
     config   *config.Config
     userRepo repository.UserRepositoryInterface
+    cache    *cache.Cache 
 }
 
 func NewUserService(userRepo repository.UserRepositoryInterface, config *config.Config) *UserService {
+    c := cache.NewCache()
+
+    // Запуск горутины для очистки кэша
+    go c.СleanupExpiredItems()
+
     return &UserService{
         userRepo: userRepo,
-        config:   config,
+        config: config,
+        cache:    c,
     }
 }
 
@@ -35,7 +43,7 @@ func (us *UserService) CreateUser(ctx context.Context, username, password string
         return "", fmt.Errorf("failed to hash password: %w", err)
     }
 
-    // Создаём пользователя в БД с начальным балансом 1000
+    // Создаём пользователя с балансом 1000 (по тз)
     if err := us.userRepo.CreateUser(ctx, id, username, hashPswd, 1000); err != nil {
         return "", fmt.Errorf("failed to create user: %w", err)
     }
@@ -45,6 +53,10 @@ func (us *UserService) CreateUser(ctx context.Context, username, password string
     if err != nil {
         return "", fmt.Errorf("failed to create auth token: %w", err)
     }
+
+    // Кэшируем токен
+    cacheKey := "auth:" + username + ":" + password
+    us.cache.Set(cacheKey, token, 10*time.Minute)
 
     return token, nil
 }
@@ -85,6 +97,14 @@ func (us *UserService) GetBalance(ctx context.Context, id string) (int, error) {
 }
 
 func (us *UserService) Auth(ctx context.Context, username, password string) (string, error) {
+    // Проверяем кэш 
+    cacheKey := "auth:" + username + ":" + password
+    if tokenCached, found := us.cache.Get(cacheKey); found {
+        if tokenStr, ok := tokenCached.(string); ok {
+            return tokenStr, nil // Возвращаем токен из кэша
+        }
+    }
+
     userID, storedHash, err := us.userRepo.GetUserCredentials(ctx, username)
     if err != nil ||  userID == "" {
         return "", fmt.Errorf("failed to get user credentials: %w", err)
@@ -99,6 +119,8 @@ func (us *UserService) Auth(ctx context.Context, username, password string) (str
     if err != nil {
         return "", fmt.Errorf("failed to generate JWT: %w", err)
     }
+
+    us.cache.Set(cacheKey, token, 10*time.Minute)
     
     return token, nil
 }

@@ -33,8 +33,8 @@ func (lr *LedgerRepository) SendMoney(ctx context.Context, fromUser, toUser stri
         UPDATE "MerchStore".users 
         SET balance = balance + 
             CASE 
-                WHEN id = $1 THEN -$3
-                WHEN id = $2 THEN $3 
+                WHEN id = $1 THEN -$3::integer
+                WHEN id = $2 THEN $3::integer
             END 
         WHERE id IN ($1, $2)`
 
@@ -45,16 +45,16 @@ func (lr *LedgerRepository) SendMoney(ctx context.Context, fromUser, toUser stri
 
 	// Логируем списание у отправителя
 	_, err = tx.Exec(ctx, `
-		INSERT INTO "MerchStore".ledger (user_id, movement_type, amount) 
-		VALUES ($1, 'transfer_out', $2)`, fromUser, amount)
+		INSERT INTO "MerchStore".ledger (user_id, reference_id_usr, movement_type, amount) 
+		VALUES ($1, $2, 'transfer_out', $3)`, fromUser, toUser, amount)
 	if err != nil {
 		return fmt.Errorf("failed to log sender transaction: %w", err)
 	}
 
 	// Логируем зачисление у получателя
 	_, err = tx.Exec(ctx, `
-		INSERT INTO "MerchStore".ledger (user_id, movement_type, amount) 
-		VALUES ($1, 'transfer_in', $2)`, toUser, amount)
+		INSERT INTO "MerchStore".ledger (user_id, reference_id_usr, movement_type, amount) 
+		VALUES ($1, $2, 'transfer_in', $3)`, toUser, fromUser, amount)
 	if err != nil {
 		return fmt.Errorf("failed to log recipient transaction: %w", err)
 	}
@@ -71,7 +71,7 @@ func (lr *LedgerRepository) SendMoney(ctx context.Context, fromUser, toUser stri
 
 func (lr *LedgerRepository) GetUserTransactions(ctx context.Context, userID string, limit, offset int) (*[]models.Ledger, error) {
 	query := `
-		SELECT id, user_id, movement_type, amount, reference_id, created_at
+		SELECT id, user_id, movement_type, amount, reference_id, reference_id_usr, created_at
 		FROM "MerchStore".ledger
 		WHERE user_id = $1
 		ORDER BY created_at DESC
@@ -87,7 +87,7 @@ func (lr *LedgerRepository) GetUserTransactions(ctx context.Context, userID stri
 	var transactions []models.Ledger
 	for rows.Next() {
 		var entry models.Ledger
-		err := rows.Scan(&entry.ID, &entry.UserID, &entry.MovementType, &entry.Amount, &entry.ReferenceID, &entry.CreatedAt)
+		err := rows.Scan(&entry.ID, &entry.UserID, &entry.MovementType, &entry.Amount, &entry.ReferenceID, &entry.Reference_id_usr, &entry.CreatedAt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan transaction: %w", err)
 		}
@@ -102,7 +102,7 @@ func (lr *LedgerRepository) GetUserTransactions(ctx context.Context, userID stri
 }
 
 /*
-С курсором
+С курсором, так и не потестил
 
 func (lr *LedgerRepository) GetUserTransactions(ctx context.Context, userID string, cursor *time.Time, limit int) ([]LedgerEntry, error) {
 	query := `

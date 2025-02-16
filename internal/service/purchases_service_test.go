@@ -16,23 +16,31 @@ type MockPurchasesRepo struct {
 }
 
 func (m *MockPurchasesRepo) GetUserMerch(ctx context.Context, id string) ([]*models.UserMerch, error) {
-	args := m.Called(ctx, id)
-	return args.Get(0).([]*models.UserMerch), args.Error(1)
+    args := m.Called(ctx, id)
+    
+    // когда есть покупки
+    if args.Get(0) != nil {
+        return args.Get(0).([]*models.UserMerch), args.Error(1)
+    }
+    
+    // когда покупок нет
+    return []*models.UserMerch{}, args.Error(1)
 }
 
-func (m *MockPurchasesRepo) GetMerchId(ctx context.Context, name string) (int, error) {
+func (m *MockPurchasesRepo) GetMerchId(ctx context.Context, name string) (int, int, error) {
     args := m.Called(ctx, name)
-    return args.Int(0), args.Error(1)
+    return args.Int(0), args.Int(1), args.Error(2)
 }
 
-func (m *MockPurchasesRepo) BuyMerch(ctx context.Context, userId string, merchId int, quantity int) error {
-    args := m.Called(ctx, userId, merchId, quantity)
+func (m *MockPurchasesRepo) BuyMerch(ctx context.Context, userId string, merchId int, quantity, price int) error {
+    args := m.Called(ctx, userId, merchId, quantity, price)
     return args.Error(0)
 }
 
 func TestGetUserMerch_Success(t *testing.T) {
 	mockRepo := new(MockPurchasesRepo)
-	purchasesService := NewPurchasesService(mockRepo)
+	mockUserRepo := new(MockUserRepo)
+	purchasesService := NewPurchasesService(mockRepo, mockUserRepo)
 
 	expectedMerch := []*models.UserMerch{
 		{MerchID: 1, Name: "T-Shirt", Quantity: 1},
@@ -50,7 +58,8 @@ func TestGetUserMerch_Success(t *testing.T) {
 
 func TestGetUserMerch_Error(t *testing.T) {
 	mockRepo := new(MockPurchasesRepo)
-	purchasesService := NewPurchasesService(mockRepo)
+	mockUserRepo := new(MockUserRepo)
+	purchasesService := NewPurchasesService(mockRepo, mockUserRepo)
 
 	mockRepo.On("GetUserMerch", mock.Anything, "user-id").Return(nil, errors.New("DB error"))
 
@@ -62,23 +71,26 @@ func TestGetUserMerch_Error(t *testing.T) {
 }
 
 func TestBuyMerch_Success(t *testing.T) {
-	mockRepo := new(MockPurchasesRepo)
-	purchasesService := NewPurchasesService(mockRepo)
+    mockRepo := new(MockPurchasesRepo)
+	mockUserRepo := new(MockUserRepo)
+    purchasesService := NewPurchasesService(mockRepo, mockUserRepo)
 
-	mockRepo.On("GetMerchId", mock.Anything, "T-Shirt").Return("merch-1", nil)
-	mockRepo.On("BuyMerch", mock.Anything, "user-id", "merch-1", 1).Return(nil)
+    mockRepo.On("GetMerchId", mock.Anything, "T-Shirt").Return(1, 1, nil).Once()
+    mockUserRepo.On("GetBalance", mock.Anything, "user-id").Return(100, nil).Once()
+    mockRepo.On("BuyMerch", mock.Anything, "user-id", 1, 1, 1).Return(nil).Once()
 
-	err := purchasesService.BuyMerch(context.Background(), "user-id", "T-Shirt")
-	assert.NoError(t, err)
+    err := purchasesService.BuyMerch(context.Background(), "user-id", "T-Shirt")
+    assert.NoError(t, err)
 
-	mockRepo.AssertExpectations(t)
+    mockRepo.AssertExpectations(t)
 }
 
 func TestBuyMerch_GetMerchId_Error(t *testing.T) {
 	mockRepo := new(MockPurchasesRepo)
-	purchasesService := NewPurchasesService(mockRepo)
+	mockUserRepo := new(MockUserRepo)
+	purchasesService := NewPurchasesService(mockRepo, mockUserRepo)
 
-	mockRepo.On("GetMerchId", mock.Anything, "T-Shirt").Return("", errors.New("not found"))
+	mockRepo.On("GetMerchId", mock.Anything, "T-Shirt").Return(0, 0, errors.New("not found"))
 
 	err := purchasesService.BuyMerch(context.Background(), "user-id", "T-Shirt")
 	assert.Error(t, err)
@@ -88,10 +100,11 @@ func TestBuyMerch_GetMerchId_Error(t *testing.T) {
 
 func TestBuyMerch_BuyMerch_Error(t *testing.T) {
 	mockRepo := new(MockPurchasesRepo)
-	purchasesService := NewPurchasesService(mockRepo)
+	mockUserRepo := new(MockUserRepo)
+	purchasesService := NewPurchasesService(mockRepo, mockUserRepo)
 
-	mockRepo.On("GetMerchId", mock.Anything, "T-Shirt").Return("merch-1", nil)
-	mockRepo.On("BuyMerch", mock.Anything, "user-id", "merch-1", 1).Return(errors.New("DB error"))
+	mockRepo.On("GetMerchId", mock.Anything, "T-Shirt").Return(0, 0, errors.New("not found")).Once()
+    mockUserRepo.AssertNotCalled(t, "GetBalance", mock.Anything, "user-id")
 
 	err := purchasesService.BuyMerch(context.Background(), "user-id", "T-Shirt")
 	assert.Error(t, err)

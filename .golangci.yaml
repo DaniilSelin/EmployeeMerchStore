@@ -1,0 +1,19 @@
+# .golangci.yaml
+linters:
+  enable:
+    - govet      
+    - errcheck    
+    - unused     
+    - stylecheck  
+    - gocyclo      
+    - golint       
+
+issues:
+  exclude-use-default: false 
+
+run:
+  timeout: 5m    
+  concurrency: 1
+
+exclude:
+  - test/*  

@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS "MerchStore".ledger (
     movement_type VARCHAR(50) NOT NULL, -- 'transfer_in', 'transfer_out', 'purchase'
     amount DECIMAL(18, 2) NOT NULL,
     reference_id INTEGER, 
+    reference_id_usr TEXT,
     created_at TIMESTAMP DEFAULT now(),
     CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES "MerchStore".users(id)
 );

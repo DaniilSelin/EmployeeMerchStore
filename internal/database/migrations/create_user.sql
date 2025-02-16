@@ -9,4 +9,4 @@ CREATE TABLE IF NOT EXISTS "MerchStore".users (
     created_at TIMESTAMP DEFAULT now()
 );
 
-CREATE IF NOT idx_users_username_covering ON "MerchStore".users (username) INCLUDE (id, password);
+CREATE INDEX IF NOT EXISTS idx_users_username_covering ON "MerchStore".users (username) INCLUDE (id, password);

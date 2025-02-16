@@ -20,7 +20,7 @@ func NewLedgerService(ledgerRepo repository.LedgerRepositoryInterface, userRepo 
     }
 }
 
-func (ls *LedgerService) SendMoney(ctx context.Context, fromUser, toUser string, amount int) error {
+func (ls *LedgerService) SendMoney(ctx context.Context, fromUserId, toUser string, amount int) error {
     if amount <= 0 {
         return fmt.Errorf("amount must be positive")
     }
@@ -29,8 +29,11 @@ func (ls *LedgerService) SendMoney(ctx context.Context, fromUser, toUser string,
     if err != nil {
         return fmt.Errorf("failed to get recipient id for username '%s': %w", toUser, err)
     }
+    if toUserID == "" {
+        return fmt.Errorf("recipient not found")
+    }
 
-    senderBalance, err := ls.UserRepo.GetBalance(ctx, fromUser)
+    senderBalance, err := ls.UserRepo.GetBalance(ctx, fromUserId)
     if err != nil {
         return fmt.Errorf("failed to get sender balance: %w", err)
     }
@@ -38,7 +41,7 @@ func (ls *LedgerService) SendMoney(ctx context.Context, fromUser, toUser string,
         return fmt.Errorf("insufficient balance: available %d, required %d", senderBalance, amount)
     }
 
-    if err := ls.LedgerRepo.SendMoney(ctx, fromUser, toUserID, amount); err != nil {
+    if err := ls.LedgerRepo.SendMoney(ctx, fromUserId, toUserID, amount); err != nil {
         return fmt.Errorf("failed to send money: %w", err)
     }
 
@@ -55,14 +58,19 @@ func (ls *LedgerService) GetUserTransactions(ctx context.Context, id string) ([]
     var transactionsOut []*models.Ledger
 
     for _, entry := range *transactionsAll {
-        switch entry.MovementType {
-        case "transfer_in":
-            transactionsIn = append(transactionsIn, &entry) // Append the pointer
-        case "transfer_out":
-            transactionsOut = append(transactionsOut, &entry) // Append the pointer
+        // Копируем entry, чтобы избежать перезаписи указателей
+        transaction := entry
+
+
+        // Затираем владельца ledger, вписываем получателся/отправителя
+        transaction.UserID = transaction.Reference_id_usr
+        
+        if transaction.MovementType == "transfer_in" {
+            transactionsIn = append(transactionsIn, &transaction)
+        } else if transaction.MovementType == "transfer_out" {
+            transactionsOut = append(transactionsOut, &transaction)
         }
     }
-
 
     return transactionsIn, transactionsOut, nil
 }

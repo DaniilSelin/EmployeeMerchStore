@@ -13,12 +13,12 @@ type LedgerRepositoryInterface interface {
 type UserRepositoryInterface interface {
 	GetUserCredentials(ctx context.Context, username string) (string, string, error)
 	GetBalance(ctx context.Context, id string) (int, error)
-	CreateUser(ctx context.Context, id, username, hashPswd string, balance float64) error
+	CreateUser(ctx context.Context, id, username, hashPswd string, balance int) error
 }
 
 type PurchasesRepositoryInterface interface {
-	BuyMerch(ctx context.Context, userID string, merchID int, quantity int) error
-	GetMerchId(ctx context.Context, name string) (int, error)
+	BuyMerch(ctx context.Context, userID string, merchID int, quantity, price int) error
+	GetMerchId(ctx context.Context, name string) (int, int, error)
 	GetUserMerch(ctx context.Context, userID string) ([]*models.UserMerch, error)
 }
 
